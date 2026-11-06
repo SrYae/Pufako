@@ -1,3 +1,5 @@
 node_modules/
 uploads/
+cert/
 kepubify.exe
+servidor.log

@@ -576,17 +576,83 @@ app.use(router.routes())
 app.use(router.allowedMethods())
 
 
-fs.rm('uploads', {recursive: true}, (err) => {
-  if (err) throw err
-  mkdirp('uploads').then (() => {
-    // app.listen(port)
-    const fn = app.callback()
-    const server = http.createServer(fn)
-    server.on('checkContinue', (req, res) => {
-      console.log("check continue!")
-      fn(req, res)
-    })
-    server.listen(port)
-    console.log('server is listening on port ' + port)
+// --- Arranque (modificado para Pufako) -------------------------------------
+// Acepta HTTP y HTTPS en el mismo puerto: el Kobo usa http://, y si el
+// navegador del movil fuerza https:// recibe un certificado autofirmado
+// (aviso de seguridad que se puede aceptar) en vez de ERR_SSL_PROTOCOL_ERROR.
+const net = require('net')
+const https = require('https')
+const os = require('os')
+
+async function loadCert () {
+  const dir = join(__dirname, 'cert')
+  const keyFile = join(dir, 'key.pem')
+  const certFile = join(dir, 'cert.pem')
+  if (fs.existsSync(keyFile) && fs.existsSync(certFile)) {
+    return { key: fs.readFileSync(keyFile), cert: fs.readFileSync(certFile) }
+  }
+  const selfsigned = require('selfsigned')
+  const pems = await selfsigned.generate([{ name: 'commonName', value: 'send2ereader' }], { days: 3650, keySize: 2048 })
+  await mkdirp(dir)
+  fs.writeFileSync(keyFile, pems.private)
+  fs.writeFileSync(certFile, pems.cert)
+  return { key: pems.private, cert: pems.cert }
+}
+
+function lanAddresses () {
+  const out = []
+  for (const list of Object.values(os.networkInterfaces())) {
+    for (const a of list || []) {
+      if (a.family === 'IPv4' && !a.internal && !a.address.startsWith('169.254.')) out.push(a.address)
+    }
+  }
+  return out
+}
+
+async function start () {
+  await fs.promises.rm('uploads', { recursive: true, force: true })
+  await mkdirp('uploads')
+
+  const fn = app.callback()
+  const httpServer = http.createServer(fn)
+  httpServer.on('checkContinue', (req, res) => {
+    console.log('check continue!')
+    fn(req, res)
   })
-})
+
+  let httpsServer = null
+  try {
+    httpsServer = https.createServer(await loadCert(), fn)
+    httpsServer.on('checkContinue', (req, res) => fn(req, res))
+  } catch (err) {
+    console.error('HTTPS desactivado, no se pudo crear el certificado:', err)
+  }
+
+  const server = net.createServer(socket => {
+    socket.once('error', () => socket.destroy())
+    socket.once('data', buf => {
+      socket.pause()
+      socket.unshift(buf)
+      // 0x16 = inicio de un handshake TLS
+      const target = (httpsServer && buf[0] === 0x16) ? httpsServer : httpServer
+      target.emit('connection', socket)
+      process.nextTick(() => socket.resume())
+    })
+  })
+
+  server.on('error', err => {
+    if (err.code === 'EADDRINUSE') {
+      console.error('ERROR: el puerto ' + port + ' ya esta en uso. Cierra la otra copia (o el contenedor de Docker) y vuelve a arrancar.')
+    } else {
+      console.error(err)
+    }
+    process.exit(1)
+  })
+
+  server.listen(port, () => {
+    console.log('server is listening on port ' + port)
+    for (const ip of lanAddresses()) console.log('  -> http://' + ip + ':' + port)
+  })
+}
+
+start().catch(err => { console.error(err); process.exit(1) })

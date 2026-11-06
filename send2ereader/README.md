@@ -6,13 +6,26 @@ Fijado al commit `eb0b646` del repositorio oficial, el último de `master` (20�
 
 Usa un `Dockerfile` propio en lugar del oficial: el oficial falla al construir porque instala pdfCropMargins sobre `node:lts-alpine` sin versión fija y PyMuPDF no compila. Esta imagen incluye solo lo necesario para Kobo (Node 20 + kepubify 4.0.4). La conversión a MOBI para Kindle y el recorte de márgenes de PDF no están incluidos; los EPUB, PDF y demás formatos se envían igual.
 
-## Requisitos
+## Windows (recomendado): sin Docker
+
+1. `git pull` en la carpeta `Pufako`.
+2. Doble clic en **`INICIAR.bat`**. La primera vez instala Node.js si falta, crea las reglas del firewall (acepta el aviso de administrador), descarga kepubify e instala las dependencias.
+3. Si Windows o Kaspersky preguntan por **node.exe**, pulsa **Permitir**.
+4. Abre en el Kobo y en el móvil la dirección que aparece en la ventana (`http://192.168.1.50:3001`). Deja la ventana abierta.
+
+El servidor acepta **http y https en el mismo puerto**. Si el navegador del móvil fuerza https, aparece un aviso de "conexión no privada" (certificado autofirmado): pulsa *Configuración avanzada → Continuar*. En el Kobo usa siempre `http://`.
+
+Si no conecta: intenta abrir la página en el móvil y luego haz doble clic en **`DIAGNOSTICO.bat`**. Genera `diagnostico.txt` con la red, el firewall, el antivirus y las visitas que llegaron al servidor.
+
+## Docker (Linux / servidor)
+
+### Requisitos
 
 - Un servidor en casa con Docker y Docker Compose v2 (`docker compose`, no `docker-compose`).
 - El servidor, el móvil y el Kobo conectados a la **misma red**.
 - Una IP fija para el servidor (resérvala por DHCP en el router). En los ejemplos uso `192.168.1.50`; pon la tuya.
 
-## Instalación
+### Instalación
 
 ```bash
 git clone https://github.com/SrYae/Pufako.git
