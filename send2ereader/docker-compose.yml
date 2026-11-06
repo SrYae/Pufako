@@ -1,10 +1,7 @@
 # Despliegue de send2ereader (https://github.com/daniel-j/send2ereader)
-# La imagen se construye directamente desde el repositorio oficial,
-# fijado a un commit concreto para que el despliegue sea reproducible.
 services:
   send2ereader:
-    build:
-      context: https://github.com/daniel-j/send2ereader.git#eb0b646191d654aa4ab52a185151aa34f359f889
+    build: .
     image: send2ereader:local
     container_name: send2ereader
     restart: unless-stopped

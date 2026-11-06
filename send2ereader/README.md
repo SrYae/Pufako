@@ -4,6 +4,8 @@ Instancia propia de [send2ereader](https://github.com/daniel-j/send2ereader) (el
 
 Fijado al commit `eb0b646` del repositorio oficial, el último de `master` (20‑oct‑2024).
 
+Usa un `Dockerfile` propio en lugar del oficial: el oficial falla al construir porque instala pdfCropMargins sobre `node:lts-alpine` sin versión fija y PyMuPDF no compila. Esta imagen incluye solo lo necesario para Kobo (Node 20 + kepubify 4.0.4). La conversión a MOBI para Kindle y el recorte de márgenes de PDF no están incluidos; los EPUB, PDF y demás formatos se envían igual.
+
 ## Requisitos
 
 - Un servidor en casa con Docker y Docker Compose v2 (`docker compose`, no `docker-compose`).
@@ -18,7 +20,11 @@ cd Pufako/send2ereader
 docker compose up -d --build
 ```
 
-La imagen se construye directamente desde el repositorio oficial. Incluye kepubify (EPUB → KEPUB para Kobo), KindleGen y pdfCropMargins.
+En Windows: abre antes Docker Desktop y espera a que indique *Engine running*. Para que el Kobo y el móvil lleguen al PC, abre el puerto en el firewall (PowerShell como administrador):
+
+```powershell
+New-NetFirewallRule -DisplayName "send2ereader" -Direction Inbound -Protocol TCP -LocalPort 3001 -Action Allow -Profile Private
+```
 
 Para comprobar que funciona:
 
@@ -55,4 +61,4 @@ docker compose restart        # reiniciar
 docker compose down           # parar
 ```
 
-Para actualizar a una versión nueva del código, cambia el hash del commit en `docker-compose.yml` y vuelve a ejecutar `docker compose up -d --build`.
+Para actualizar a una versión nueva del código, cambia el hash del commit en el `Dockerfile` y vuelve a ejecutar `docker compose up -d --build`.
